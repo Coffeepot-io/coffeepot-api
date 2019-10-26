@@ -3,9 +3,6 @@ import boto3
 import json
 import os
 
-os.environ['ARTICLE_LIMIT'] = '10'
-os.environ['ARTICLE_DYNAMODB_TABLE'] = 'coffeepot-dev-news'
-
 def decimal_default(obj):
     if isinstance(obj, decimal.Decimal):
         return float(obj)

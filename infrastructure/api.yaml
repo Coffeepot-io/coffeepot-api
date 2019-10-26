@@ -18,6 +18,9 @@ Parameters:
   S3BucketName:
     Type: String
     Default: coffeepot-dev-bucket-073588985313
+  ArticleLimit:
+    Type: Number
+    Default: 10
 
 Resources:
   ApiGatewayRestApi:
@@ -134,6 +137,7 @@ Resources:
       Environment:
         Variables:
           ARTICLE_DYNAMODB_TABLE: !Ref ArticleDynamoDbTable
+          ARTICLE_LIMIT: !Ref ArticleLimit
       FunctionName: !Sub ${Project}-${Environment}-api-handler
       Handler: api_handler.lambda_handler
       Role: !GetAtt ApiHandlerLambdaRole.Arn
