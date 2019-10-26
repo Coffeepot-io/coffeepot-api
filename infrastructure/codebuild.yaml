@@ -98,4 +98,3 @@ Resources:
       Tags:
         - Key: project
           Value: !Ref Project
-          
