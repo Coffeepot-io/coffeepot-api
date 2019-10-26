@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Project:
+    Type: String
+    Default: coffeepot
+  GithubRepository:
+    Type: String
+    Default: https://github.com/ThomasTaylorJr/coffeepot-api.git
+
+Resources:
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${Project}-codebuild-api-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: /service-role/
+      Tags:
+        - Key: project
+          Value: !Ref Project
+
+  CodeBuildServicePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${Project}-codebuild-api-policy
+      Roles: 
+        - !Ref CodeBuildServiceRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource:
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Project}
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Project}:*
+          - Effect: Allow
+            Action:
+              - "lambda:UpdateFunctionCode"
+            Resource:
+              - !Sub "arn:aws:lambda:us-east-1:073588985313:function:${Project}-dev-api-handler"
+              - !Sub "arn:aws:lambda:us-east-1:073588985313:function:${Project}-staging-api-handler"
+              - !Sub "arn:aws:lambda:us-east-1:073588985313:function:${Project}-prod-api-handler"
+          - Effect: Allow
+            Action:
+              - "s3:ListBucket"
+            Resource:
+              - !Sub "arn:aws:s3:::${Project}-dev-bucket-073588985313"
+              - !Sub "arn:aws:s3:::${Project}-staging-bucket-073588985313"
+              - !Sub "arn:aws:s3:::${Project}-prod-bucket-073588985313"
+          - Effect: Allow
+            Action:
+              - "s3:PutObject"
+              - "s3:GetObject"
+            Resource:
+              - !Sub "arn:aws:s3:::${Project}-dev-bucket-073588985313/lambda/src/*"
+              - !Sub "arn:aws:s3:::${Project}-staging-bucket-073588985313/lambda/src/*"
+              - !Sub "arn:aws:s3:::${Project}-prod-bucket-073588985313/lambda/src/*"
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${Project}-api
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:1.0
+      Source:
+        Auth:
+          Type: OAUTH
+        Location: !Ref GithubRepository
+        Type: GITHUB
+      Triggers:
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PULL_REQUEST_MERGED
+            - Type: BASE_REF
+              Pattern: "^refs/heads/dev$"
+          - - Type: EVENT
+              Pattern: PULL_REQUEST_MERGED
+            - Type: BASE_REF
+              Pattern: "^refs/heads/master$"
+        Webhook: true
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: project
+          Value: !Ref Project
+          

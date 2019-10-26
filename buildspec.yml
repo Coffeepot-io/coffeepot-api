@@ -1,0 +1,18 @@
+version: 0.2
+env:
+  variables:
+    SCRIPT_DIR: ./scripts
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+  build:
+    commands:
+      - echo "⚙️ Installing Python dependencies ... ⚙️"
+      - mkdir dependencies
+      - pip3 install -r requirements.txt -t ./dependencies
+  post_build:
+    commands:
+      - chmod +x $SCRIPT_DIR/build_lambdas.sh && chmod +x $SCRIPT_DIR/env.sh
+      - source $SCRIPT_DIR/env.sh
+      - $SCRIPT_DIR/build_lambdas.sh
