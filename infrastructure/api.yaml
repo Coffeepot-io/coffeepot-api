@@ -139,7 +139,7 @@ Resources:
           ARTICLE_DYNAMODB_TABLE: !Ref ArticleDynamoDbTable
           ARTICLE_LIMIT: !Ref ArticleLimit
       FunctionName: !Sub ${Project}-${Environment}-api-handler
-      Handler: api_handler.lambda_handler
+      Handler: api_handler_lambda.lambda_handler
       Role: !GetAtt ApiHandlerLambdaRole.Arn
       Runtime: python3.7
       Tags:
