@@ -71,13 +71,3 @@ def lambda_handler(event, context):
     print(api_response(200, body))
 
     return api_response(200, body)
-
-# if __name__ == '__main__':
-#     lambda_handler(
-#         {
-#             "resource": "/articles",
-#             "multiValueQueryStringParameters": None,
-#             "httpMethod": 'GET'
-#         },
-#         None
-#     )
