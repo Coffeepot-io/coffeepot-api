@@ -38,11 +38,21 @@ def article_handler(method, params):
     limit = get_limit(params)
     if not params:
         return article_table.scan(Limit=limit)['Items']
+    
+def topic_handler(method, params):
+    dynamodb = boto3.resource('dynamodb')
+    topic_table = dynamodb.Table(os.environ['TOPIC_DYNAMODB_TABLE'])
+    limit = get_limit(params)
+    if not params:
+        return article_table.scan(Limit=limit)['Items']
 
 def lambda_handler(event, context):
 
+    print(event)
+
     resource_functions = {
-        "articles": article_handler
+        "articles": article_handler,
+        "topcics": topic_handler
     }
 
     resource_path = event['resource'].split("/")
@@ -61,13 +71,3 @@ def lambda_handler(event, context):
     print(api_response(200, body))
 
     return api_response(200, body)
-
-if __name__ == '__main__':
-    lambda_handler(
-        {
-            "resource": "/articles",
-            "multiValueQueryStringParameters": None,
-            "httpMethod": 'GET'
-        },
-        None
-    )
