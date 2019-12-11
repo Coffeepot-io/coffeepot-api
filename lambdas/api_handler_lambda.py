@@ -44,7 +44,7 @@ def topic_handler(method, params):
     topic_table = dynamodb.Table(os.environ['TOPIC_DYNAMODB_TABLE'])
     limit = get_limit(params)
     if not params:
-        return article_table.scan(Limit=limit)['Items']
+        return topic_table.scan(Limit=limit)['Items']
 
 def lambda_handler(event, context):
 
@@ -52,7 +52,7 @@ def lambda_handler(event, context):
 
     resource_functions = {
         "articles": article_handler,
-        "topcics": topic_handler
+        "topics": topic_handler
     }
 
     resource_path = event['resource'].split("/")
