@@ -8,66 +8,78 @@ def decimal_default(obj):
         return float(obj)
     raise TypeError
 
-def has_allowed_params(params):
-    allowed_params = {'limit', 'provider'}
-    if params:
-        return allowed_params >= params.keys()
-    else:
-        return True
+class CoffeePotApi:
 
-def api_response(status, body):
-    payload = {
-        "isBase64Encoded": True,
-        "statusCode": status,
-        "headers": {'Content-Type': 'application/json'},
-        "body": json.dumps(body, default=decimal_default)
-    }
-    return payload
+    def __init__(self):
+        self.dynamodb = boto3.resource('dynamodb')
 
-def get_limit(params):
-    try:
-        limit = int(params['limit'][0])
-        params.pop('limit', None)
-    except (ValueError, TypeError):
-        limit = int(os.environ['ARTICLE_LIMIT'])
-    return limit
+    def _has_allowed_params(self, params):
+        allowed_params = {'limit', 'provider'}
+        if params:
+            return allowed_params >= params.keys()
+        else:
+            return True
 
-def article_handler(method, params):
-    dynamodb = boto3.resource('dynamodb')
-    article_table = dynamodb.Table(os.environ['ARTICLE_DYNAMODB_TABLE'])
-    limit = get_limit(params)
-    if not params:
-        return article_table.scan(Limit=limit)['Items']
+    def _api_response(self, status, body):
+        payload = {
+            "isBase64Encoded": True,
+            "statusCode": status,
+            "headers": {'Content-Type': 'application/json'},
+            "body": json.dumps(body, default=decimal_default)
+        }
+        return payload
+
+    def _get_limit(self, params):
+        try:
+            limit = int(params['limit'][0])
+            params.pop('limit', None)
+        except (ValueError, TypeError):
+            limit = int(os.environ['ARTICLE_LIMIT'])
+        return limit
+
+    def _article_handler(self, method, params):
+        article_table = self.dynamodb.Table(os.environ['ARTICLE_DYNAMODB_TABLE'])
+        limit = self._get_limit(params)
+        if not params:
+            return article_table.scan(Limit=limit)['Items']
+
+    def _topic_handler(self, method, params):
+        topic_table = self.dynamodb.Table(os.environ['TOPIC_DYNAMODB_TABLE'])
+        limit = self._get_limit(params)
+        if not params:
+            return topic_table.scan(Limit=limit)['Items']
     
-def topic_handler(method, params):
-    dynamodb = boto3.resource('dynamodb')
-    topic_table = dynamodb.Table(os.environ['TOPIC_DYNAMODB_TABLE'])
-    limit = get_limit(params)
-    if not params:
-        return topic_table.scan(Limit=limit)['Items']
+    def execute(self, event):
+
+        resource_functions = {
+            "articles": self._article_handler,
+            "topics": self._topic_handler
+        }
+
+        resource_path = event['resource'].split("/")
+        resource = resource_path[-1]
+        query_parameters = event['multiValueQueryStringParameters']
+        http_method = event['httpMethod']
+    
+        if not(self._has_allowed_params(query_parameters)):
+            return self._api_response(400, {"Message": "Incorrect query string specified"})
+
+        try:
+            body = resource_functions[resource](http_method, query_parameters)
+        except Exception as e:
+            return self._api_response(500, {"Message": "There was a problem handling this request"})
+
+        return self._api_response(200, body)
 
 def lambda_handler(event, context):
+    return CoffeePotApi().execute(event)
 
-    print(event)
-
-    resource_functions = {
-        "articles": article_handler,
-        "topics": topic_handler
-    }
-
-    resource_path = event['resource'].split("/")
-    resource = resource_path[-1]
-    query_parameters = event['multiValueQueryStringParameters']
-    http_method = event['httpMethod']
-
-    if not(has_allowed_params(query_parameters)):
-        return api_response(400, {"Message": "Incorrect query string specified"})
-    
-    try:
-        body = resource_functions[resource](http_method, query_parameters)
-    except Exception as e:
-        return api_response(500, {"Message": "There was a problem handling this request"})
-
-    print(api_response(200, body))
-
-    return api_response(200, body)
+if __name__ == "__main__":
+    print(lambda_handler(
+        {
+            "resource": "/topics",
+            "multiValueQueryStringParameters": "",
+            "httpMethod": "POST"
+        },
+        None
+    ))
